@@ -20,9 +20,17 @@ export const useSiteBranding = () => {
       }
     };
 
-    void loadLogo();
+    const refreshLogo = () => { void loadLogo(); };
+    refreshLogo();
+    const refreshTimer = window.setInterval(refreshLogo, 15000);
+    window.addEventListener('focus', refreshLogo);
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshLogo(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       cancelled = true;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshLogo);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 
