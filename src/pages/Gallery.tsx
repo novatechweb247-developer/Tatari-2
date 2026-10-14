@@ -20,8 +20,18 @@ export const Gallery: React.FC = () => {
         setGalleryItems(data.map(row => ({ id: row.id, title: row.title, category: row.category, image: row.image_url, description: row.description })));
       }
     };
-    void loadGallery();
-    return () => { cancelled = true; };
+    const refreshGallery = () => { void loadGallery(); };
+    refreshGallery();
+    const refreshTimer = window.setInterval(refreshGallery, 15000);
+    window.addEventListener('focus', refreshGallery);
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshGallery(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshGallery);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const categories = ['All', 'Living Room', 'Bedroom', 'Furniture', 'Showroom', 'Interiors'];
