@@ -40,6 +40,7 @@ type HeroSlide = {
 
 type SiteSettings = {
   id: string;
+  logo_url: string;
   business_name: string;
   tagline: string;
   address: string;
@@ -133,7 +134,7 @@ const panel = 'rounded-2xl border border-[#D8CEC0] bg-white p-5 shadow-sm sm:p-7
 export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [active, setActive] = useState<Section>('Overview');
   const [session, setSession] = useState<any>(null);
-  const [email, setEmail] = useState('admin@tatari.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -221,6 +222,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         phone_international: BUSINESS_INFO.phoneInternational,
         whatsapp_url: BUSINESS_INFO.whatsappUrl,
         map_url: BUSINESS_INFO.mapUrl,
+        logo_url: '',
         description: BUSINESS_INFO.description,
         editorial_image_url:
           'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1000&q=85',
@@ -330,6 +332,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     file: File | undefined,
     target:
       | { kind: 'editorial' }
+      | { kind: 'logo' }
       | { kind: 'hero'; slideNumber: number }
       | { kind: 'product'; index: number }
       | { kind: 'gallery'; index: number }
@@ -343,6 +346,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const targetKey =
       target.kind === 'editorial'
         ? 'editorial'
+        : target.kind === 'logo'
+        ? 'logo'
         : target.kind === 'hero'
         ? `hero-${target.slideNumber}`
         : target.kind === 'product'
@@ -394,6 +399,12 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       if (target.kind === 'editorial') {
         if (settings) {
           const updated = { ...settings, editorial_image_url: publicUrl };
+          setSettings(updated);
+          await saveSettings(false, updated);
+        }
+      } else if (target.kind === 'logo') {
+        if (settings) {
+          const updated = { ...settings, logo_url: publicUrl };
           setSettings(updated);
           await saveSettings(false, updated);
         }
@@ -484,6 +495,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       map_url: target.map_url || '',
       description: target.description || '',
       editorial_image_url: target.editorial_image_url || '',
+      logo_url: target.logo_url || '',
     };
 
     const payload: any = {
@@ -621,7 +633,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     targetKey: string,
     onFileSelected: (file: File) => void,
     onUrlChange: (url: string) => void,
-    inputId: string
+    inputId: string,
+    imageFit: 'cover' | 'contain' = 'cover'
   ) => {
     const isUploading = uploadingTarget === targetKey;
 
@@ -636,7 +649,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               <img
                 src={currentUrl}
                 alt={label}
-                className="max-h-48 w-full rounded-lg object-cover shadow-sm"
+                className={`w-full rounded-lg shadow-sm ${imageFit === 'contain' ? 'max-h-36 object-contain' : 'max-h-48 object-cover'}`}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80';
@@ -1123,6 +1136,22 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 <p className="text-xs text-[#6B5546] mt-1">
                   Contact numbers, showroom address, and business summary.
                 </p>
+              </div>
+
+              <div className="mb-8 rounded-2xl border border-[#D8CEC0] bg-[#F6F1E8]/30 p-5 sm:p-6">
+                <h3 className="font-serif text-xl">Website Logo</h3>
+                <p className="mt-1 mb-4 text-xs leading-5 text-[#6B5546]">
+                  Upload your current logo from your phone or paste a permanent image URL. Save as draft first, then publish to show it across the website.
+                </p>
+                {renderImageUpload(
+                  'Current Website Logo',
+                  settings.logo_url || '',
+                  'logo',
+                  (file) => uploadImage(file, { kind: 'logo' }),
+                  (v) => setSettings({ ...settings, logo_url: v }),
+                  'logo-upload-input',
+                  'contain'
+                )}
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">
