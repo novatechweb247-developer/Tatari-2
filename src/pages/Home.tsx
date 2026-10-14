@@ -55,7 +55,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         });
       }
     };
-    void loadPublishedHero();
     const loadPublishedSettings = async () => {
       if (!supabase) return;
       const { data, error } = await supabase.from('site_settings').select('address,whatsapp_url,editorial_image_url,is_published').eq('id', 'main').eq('is_published', true).maybeSingle();
@@ -72,9 +71,23 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         setFeaturedProducts(data.map(row => ({ id: row.id, name: row.name, category: row.category as Product['category'], categoryLabel: row.category_label, image: row.image_url, description: row.description, features: Array.isArray(row.features) ? row.features as string[] : [], dimensions: row.dimensions || undefined, materials: row.materials || undefined })));
       }
     };
-    if (supabase) {
+    const refreshPublishedContent = () => {
+      void loadPublishedHero();
       void loadPublishedSettings();
       void loadFeaturedProducts();
+    };
+    if (supabase) {
+      refreshPublishedContent();
+      const refreshTimer = window.setInterval(refreshPublishedContent, 15000);
+      window.addEventListener('focus', refreshPublishedContent);
+      const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshPublishedContent(); };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      return () => {
+        cancelled = true;
+        window.clearInterval(refreshTimer);
+        window.removeEventListener('focus', refreshPublishedContent);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      };
     }
     return () => { cancelled = true; };
   }, []);
