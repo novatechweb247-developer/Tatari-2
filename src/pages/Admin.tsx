@@ -24,6 +24,7 @@ type Section =
   | 'Collections'
   | 'Gallery'
   | 'Enquiries'
+  | 'Website logo'
   | 'Business details';
 
 type HeroSlide = {
@@ -40,6 +41,7 @@ type HeroSlide = {
 
 type SiteSettings = {
   id: string;
+  logo_url: string;
   business_name: string;
   tagline: string;
   address: string;
@@ -118,6 +120,11 @@ const sections: { label: Section; icon: React.ReactNode; description: string }[]
     description: 'Customer messages saved from the public contact form.',
   },
   {
+    label: 'Website logo',
+    icon: <ImageIcon size={18} />,
+    description: 'Upload and manage the logo shown across the website.',
+  },
+  {
     label: 'Business details',
     icon: <Settings size={18} />,
     description: 'Contact details, address, and showroom information.',
@@ -133,8 +140,8 @@ const panel = 'rounded-2xl border border-[#D8CEC0] bg-white p-5 shadow-sm sm:p-7
 export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [active, setActive] = useState<Section>('Overview');
   const [session, setSession] = useState<any>(null);
-  const [email, setEmail] = useState('admin@tatari.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
@@ -214,6 +221,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     } else {
       setSettings({
         id: 'main',
+        logo_url: '',
         business_name: BUSINESS_INFO.name,
         tagline: BUSINESS_INFO.tagline,
         address: BUSINESS_INFO.address,
@@ -221,6 +229,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
         phone_international: BUSINESS_INFO.phoneInternational,
         whatsapp_url: BUSINESS_INFO.whatsappUrl,
         map_url: BUSINESS_INFO.mapUrl,
+        logo_url: '',
         description: BUSINESS_INFO.description,
         editorial_image_url:
           'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1000&q=85',
@@ -330,6 +339,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     file: File | undefined,
     target:
       | { kind: 'editorial' }
+      | { kind: 'logo' }
       | { kind: 'hero'; slideNumber: number }
       | { kind: 'product'; index: number }
       | { kind: 'gallery'; index: number }
@@ -343,6 +353,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const targetKey =
       target.kind === 'editorial'
         ? 'editorial'
+        : target.kind === 'logo'
+        ? 'logo'
         : target.kind === 'hero'
         ? `hero-${target.slideNumber}`
         : target.kind === 'product'
@@ -397,6 +409,12 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
           setSettings(updated);
           await saveSettings(false, updated);
         }
+      } else if (target.kind === 'logo') {
+        if (settings) {
+          const updated = { ...settings, logo_url: publicUrl };
+          setSettings(updated);
+          await saveSettings(false, updated);
+        }
       } else if (target.kind === 'hero') {
         const slide = slides.find((s) => s.slide_number === target.slideNumber);
         if (slide) {
@@ -435,7 +453,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     }
   };
 
-  const saveSlide = async (slide: HeroSlide, publish: boolean) => {
+  const saveSlide = async (slide: HeroSlide, publish: boolean, reload = true) => {
     if (!supabase) throw new Error('Database client not available');
     if (!slide.title?.trim()) throw new Error(`Slide ${slide.slide_number} requires a title.`);
     if (!slide.image_url?.trim()) throw new Error(`Slide ${slide.slide_number} requires an image.`);
@@ -466,15 +484,16 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     if (saveError) throw new Error(`Failed to save slide: ${saveError.message || saveError}`);
 
-    await loadData();
+    if (reload) await loadData();
   };
 
-  const saveSettings = async (publish: boolean, overrideSettings?: SiteSettings) => {
+  const saveSettings = async (publish: boolean, overrideSettings?: SiteSettings, reload = true) => {
     if (!supabase) throw new Error('Database client not available');
     const target = overrideSettings || settings;
     if (!target) throw new Error('No settings loaded');
 
     const values = {
+      logo_url: target.logo_url || '',
       business_name: target.business_name || '',
       tagline: target.tagline || '',
       address: target.address || '',
@@ -503,10 +522,10 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     if (saveError) throw new Error(`Failed to save settings: ${saveError.message || saveError}`);
 
-    await loadData();
+    if (reload) await loadData();
   };
 
-  const saveProduct = async (item: ProductRow, publish: boolean) => {
+  const saveProduct = async (item: ProductRow, publish: boolean, reload = true) => {
     if (!supabase) throw new Error('Database client not available');
     if (!item.name?.trim()) throw new Error('Product name is required.');
 
@@ -522,7 +541,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     };
 
     const isNew = !item.id;
-    const productId = item.id || `prod-${Date.now()}`;
+    const productId = item.id || `prod-${crypto.randomUUID()}`;
 
     const payload: any = {
       id: productId,
@@ -546,10 +565,18 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { error: saveError } = await query;
     if (saveError) throw new Error(`Failed to save product: ${saveError.message || saveError}`);
 
-    await loadData();
+    // Keep the generated database ID in editor state. Otherwise the next save/publish
+    // would treat this new card as unsaved and insert a duplicate row.
+    if (isNew) {
+      setProductRows((prev) =>
+        prev.map((row) => (row === item ? { ...row, id: productId } : row))
+      );
+    }
+
+    if (reload) await loadData();
   };
 
-  const saveGalleryItem = async (item: GalleryRow, publish: boolean) => {
+  const saveGalleryItem = async (item: GalleryRow, publish: boolean, reload = true) => {
     if (!supabase) throw new Error('Database client not available');
     if (!item.title?.trim()) throw new Error('Gallery title is required.');
 
@@ -561,7 +588,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     };
 
     const isNew = !item.id;
-    const galleryId = item.id || `gal-${Date.now()}`;
+    const galleryId = item.id || `gal-${crypto.randomUUID()}`;
 
     const payload: any = {
       id: galleryId,
@@ -585,9 +612,39 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { error: saveError } = await query;
     if (saveError) throw new Error(`Failed to save gallery item: ${saveError.message || saveError}`);
 
-    await loadData();
+    // Retain the generated ID so later saves update this item instead of duplicating it.
+    if (isNew) {
+      setGalleryRows((prev) =>
+        prev.map((row) => (row === item ? { ...row, id: galleryId } : row))
+      );
+    }
+
+    if (reload) await loadData();
   };
 
+  // Save or publish every editable section from one global control bar.
+  const saveAllChanges = async (publish: boolean) => {
+    if (!supabase) throw new Error('Database client not available');
+    if (!settings) throw new Error('Website settings are not loaded yet.');
+
+    const incompleteProducts = productRows.filter((item) => !item.name?.trim());
+    if (incompleteProducts.length) {
+      throw new Error('Please add a name to every product (or delete empty product cards) before saving all changes.');
+    }
+    const incompleteGallery = galleryRows.filter((item) => !item.title?.trim());
+    if (incompleteGallery.length) {
+      throw new Error('Please add a title to every gallery item (or delete empty gallery cards) before saving all changes.');
+    }
+
+    // Do not reload between writes: keep unsaved edits from every tab intact.
+    await Promise.all([
+      ...slides.slice(0, 3).map((slide) => saveSlide(slide, publish, false)),
+      saveSettings(publish, settings, false),
+      ...productRows.map((item) => saveProduct(item, publish, false)),
+      ...galleryRows.map((item) => saveGalleryItem(item, publish, false)),
+    ]);
+    await loadData();
+  };
   const deleteProduct = async (item: ProductRow) => {
     if (!supabase || !item.id) return;
     const { error: deleteError } = await supabase.from('products').delete().eq('id', item.id);
@@ -621,7 +678,8 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     targetKey: string,
     onFileSelected: (file: File) => void,
     onUrlChange: (url: string) => void,
-    inputId: string
+    inputId: string,
+    imageFit: 'cover' | 'contain' = 'cover'
   ) => {
     const isUploading = uploadingTarget === targetKey;
 
@@ -636,7 +694,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               <img
                 src={currentUrl}
                 alt={label}
-                className="max-h-48 w-full rounded-lg object-cover shadow-sm"
+                className={`w-full rounded-lg shadow-sm ${imageFit === 'contain' ? 'max-h-36 object-contain' : 'max-h-48 object-cover'}`}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src =
                     'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80';
@@ -827,7 +885,21 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               Website Admin Center
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              disabled={busy || uploadingTarget !== null}
+              onClick={() => runSave(() => saveAllChanges(false), 'All website changes saved as drafts. They are stored centrally and are not public until published.')}
+              className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] bg-white px-3.5 py-2 text-xs font-semibold hover:bg-[#F6F1E8] transition-colors disabled:opacity-50"
+            >
+              <Save size={14} /> Save Drafts
+            </button>
+            <button
+              disabled={busy || uploadingTarget !== null}
+              onClick={() => runSave(() => saveAllChanges(true), 'All website changes published successfully.')}
+              className="inline-flex items-center gap-2 rounded-full bg-[#1C1511] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#3A271C] transition-colors disabled:opacity-50"
+            >
+              <CheckCircle2 size={14} /> Publish All
+            </button>
             <button
               onClick={() => runSave(loadData, 'Data refreshed from database.')}
               className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] px-3.5 py-2 text-xs font-medium hover:bg-white transition-colors"
@@ -925,6 +997,29 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
             </div>
           )}
 
+          {/* WEBSITE LOGO SECTION */}
+          {active === 'Website logo' && settings && (
+            <section className={panel}>
+              <div className="mb-6">
+                <h2 className="font-serif text-2xl">Website Logo</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B5546]">
+                  Upload a logo directly from your phone or paste an image URL. Use Save Drafts to store it, then Publish All to show it across the website on every device.
+                </p>
+              </div>
+              {renderImageUpload(
+                'Current Website Logo',
+                settings.logo_url || '',
+                'logo',
+                (file) => uploadImage(file, { kind: 'logo' }),
+                (v) => setSettings({ ...settings, logo_url: v }),
+                'logo-upload-input',
+                'contain'
+              )}
+              <p className="mt-4 rounded-xl bg-[#F6F1E8] p-4 text-xs leading-5 text-[#6B5546]">
+                The published logo appears in the website navigation and footer. Until one is published, the existing TATARI text brand remains visible.
+              </p>
+            </section>
+          )}
           {/* HOMEPAGE SECTION (3 Hero Slides & Editorial Image) */}
           {active === 'Homepage' && (
             <div className="space-y-8">
@@ -1034,32 +1129,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                         )}
                       </div>
 
-                      <div className="mt-6 flex flex-wrap gap-3 border-t border-[#D8CEC0] pt-4">
-                        <button
-                          disabled={busy || uploadingTarget !== null}
-                          onClick={() =>
-                            runSave(
-                              () => saveSlide(slide, false),
-                              `Slide ${slide.slide_number} saved as draft.`
-                            )
-                          }
-                          className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-[#F6F1E8] transition-colors shadow-sm disabled:opacity-50"
-                        >
-                          <Save size={14} /> Save draft
-                        </button>
-                        <button
-                          disabled={busy || uploadingTarget !== null}
-                          onClick={() =>
-                            runSave(
-                              () => saveSlide(slide, true),
-                              `Slide ${slide.slide_number} published to website.`
-                            )
-                          }
-                          className="rounded-full bg-[#1C1511] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3A271C] transition-colors shadow-md disabled:opacity-50"
-                        >
-                          Publish slide
-                        </button>
-                      </div>
+
                     </div>
                   ))}
                 </div>
@@ -1084,32 +1154,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     'editorial-upload-input'
                   )}
 
-                  <div className="mt-6 flex gap-3 border-t border-[#D8CEC0] pt-4">
-                    <button
-                      disabled={busy || uploadingTarget !== null}
-                      onClick={() =>
-                        runSave(
-                          () => saveSettings(false),
-                          'Editorial image saved as draft.'
-                        )
-                      }
-                      className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-[#F6F1E8] transition-colors shadow-sm disabled:opacity-50"
-                    >
-                      <Save size={14} /> Save draft
-                    </button>
-                    <button
-                      disabled={busy || uploadingTarget !== null}
-                      onClick={() =>
-                        runSave(
-                          () => saveSettings(true),
-                          'Editorial image published to website.'
-                        )
-                      }
-                      className="rounded-full bg-[#1C1511] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3A271C] transition-colors shadow-md disabled:opacity-50"
-                    >
-                      Publish image
-                    </button>
-                  </div>
+
                 </section>
               )}
             </div>
@@ -1124,6 +1169,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                   Contact numbers, showroom address, and business summary.
                 </p>
               </div>
+
 
               <div className="grid gap-6 sm:grid-cols-2">
                 {field('Business name', settings.business_name, (v) =>
@@ -1154,32 +1200,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3 border-t border-[#D8CEC0] pt-4">
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    runSave(
-                      () => saveSettings(false),
-                      'Business details saved as draft.'
-                    )
-                  }
-                  className="rounded-full border border-[#D8CEC0] bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-[#F6F1E8] transition-colors shadow-sm disabled:opacity-50"
-                >
-                  Save draft
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    runSave(
-                      () => saveSettings(true),
-                      'Business details published to website.'
-                    )
-                  }
-                  className="rounded-full bg-[#1C1511] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3A271C] transition-colors shadow-md disabled:opacity-50"
-                >
-                  Publish changes
-                </button>
-              </div>
+
             </section>
           )}
 
@@ -1398,30 +1419,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-3 border-t border-[#D8CEC0] pt-4">
-                      <button
-                        disabled={busy || uploadingTarget !== null}
-                        onClick={() =>
-                          runSave(
-                            () => saveProduct(item, false),
-                            `Product "${item.name || 'item'}" saved as draft.`
-                          )
-                        }
-                        className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-[#F6F1E8] transition-colors shadow-sm disabled:opacity-50"
-                      >
-                        <Save size={14} /> Save draft
-                      </button>
-                      <button
-                        disabled={busy || uploadingTarget !== null}
-                        onClick={() =>
-                          runSave(
-                            () => saveProduct(item, true),
-                            `Product "${item.name || 'item'}" published to catalogue.`
-                          )
-                        }
-                        className="rounded-full bg-[#1C1511] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3A271C] transition-colors shadow-md disabled:opacity-50"
-                      >
-                        Publish
-                      </button>
+
                       {item.id && (
                         <button
                           disabled={busy || uploadingTarget !== null}
@@ -1549,30 +1547,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-3 border-t border-[#D8CEC0] pt-4">
-                      <button
-                        disabled={busy || uploadingTarget !== null}
-                        onClick={() =>
-                          runSave(
-                            () => saveGalleryItem(item, false),
-                            `Gallery item "${item.title || 'item'}" saved as draft.`
-                          )
-                        }
-                        className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-[#F6F1E8] transition-colors shadow-sm disabled:opacity-50"
-                      >
-                        <Save size={14} /> Save draft
-                      </button>
-                      <button
-                        disabled={busy || uploadingTarget !== null}
-                        onClick={() =>
-                          runSave(
-                            () => saveGalleryItem(item, true),
-                            `Gallery item "${item.title || 'item'}" published to website.`
-                          )
-                        }
-                        className="rounded-full bg-[#1C1511] px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3A271C] transition-colors shadow-md disabled:opacity-50"
-                      >
-                        Publish
-                      </button>
+
                       {item.id && (
                         <button
                           disabled={busy || uploadingTarget !== null}

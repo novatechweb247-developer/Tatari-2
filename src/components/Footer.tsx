@@ -1,12 +1,15 @@
 import React from 'react';
 import { MapPin, Phone, MessageCircle } from 'lucide-react';
 import { BUSINESS_INFO } from '../data';
+import { useSiteBranding } from '../hooks/useSiteBranding';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const { logoUrl } = useSiteBranding();
+  const [logoFailed, setLogoFailed] = React.useState(false);
   const handleLinkClick = (e: React.MouseEvent, path: string) => {
     e.preventDefault();
     onNavigate(path);
@@ -20,12 +23,23 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Brand Info */}
           <div>
             <div className="flex flex-col mb-6">
-              <span className="font-serif text-2xl font-light tracking-[0.2em] text-[#F6F1E8]">
-                TATARI
-              </span>
-              <span className="text-xs font-sans tracking-[0.3em] text-[#C9A45C] uppercase">
-                Furniture
-              </span>
+              {logoUrl && !logoFailed ? (
+                <img
+                  src={logoUrl}
+                  alt="Tatari Furniture"
+                  className="h-12 max-w-[190px] object-contain object-left"
+                  onError={() => setLogoFailed(true)}
+                />
+              ) : (
+                <>
+                  <span className="font-serif text-2xl font-light tracking-[0.2em] text-[#F6F1E8]">
+                    TATARI
+                  </span>
+                  <span className="text-xs font-sans tracking-[0.3em] text-[#C9A45C] uppercase">
+                    Furniture
+                  </span>
+                </>
+              )}
             </div>
             <p className="text-[#D8CEC0] text-sm leading-relaxed font-light mb-6">
               {BUSINESS_INFO.description}
