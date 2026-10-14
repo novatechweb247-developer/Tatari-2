@@ -885,7 +885,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
               <CheckCircle2 size={14} /> Publish All
             </button>
             <button
-              onClick={() => runSave(loadData, 'Data refreshed from database.')
+              onClick={() => runSave(loadData, 'Data refreshed from database.')}
               className="inline-flex items-center gap-2 rounded-full border border-[#D8CEC0] px-3.5 py-2 text-xs font-medium hover:bg-white transition-colors"
             >
               <RefreshCw size={14} className={busy ? 'animate-spin' : ''} /> Refresh
