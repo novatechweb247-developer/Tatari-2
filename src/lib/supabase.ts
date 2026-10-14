@@ -24,6 +24,10 @@ export const isSupabaseConfigured = isRealSupabase;
 // remains unavailable rather than pretending writes succeeded.
 export const supabase: SupabaseClient | null = isRealSupabase
   ? createClient(rawUrl, rawKey, {
+      global: {
+        // Avoid browser HTTP caching for shared published website content.
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
       auth: {
         persistSession: true,
         autoRefreshToken: true,
