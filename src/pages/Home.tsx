@@ -57,6 +57,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     };
     void loadPublishedHero();
     const loadPublishedSettings = async () => {
+      if (!supabase) return;
       const { data, error } = await supabase.from('site_settings').select('address,whatsapp_url,editorial_image_url,is_published').eq('id', 'main').eq('is_published', true).maybeSingle();
       if (!cancelled && !error && data) {
         if (data.editorial_image_url) setEditorialImage(data.editorial_image_url);
@@ -65,6 +66,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       }
     };
     const loadFeaturedProducts = async () => {
+      if (!supabase) return;
       const { data, error } = await supabase.from('products').select('id,name,category,category_label,image_url,description,features,dimensions,materials').eq('is_published', true).order('sort_order').limit(4);
       if (!cancelled && !error && data?.length) {
         setFeaturedProducts(data.map(row => ({ id: row.id, name: row.name, category: row.category as Product['category'], categoryLabel: row.category_label, image: row.image_url, description: row.description, features: Array.isArray(row.features) ? row.features as string[] : [], dimensions: row.dimensions || undefined, materials: row.materials || undefined })));
