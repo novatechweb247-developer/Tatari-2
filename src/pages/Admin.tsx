@@ -503,7 +503,6 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
       map_url: target.map_url || '',
       description: target.description || '',
       editorial_image_url: target.editorial_image_url || '',
-      logo_url: target.logo_url || '',
     };
 
     const payload: any = {
@@ -566,6 +565,14 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     const { error: saveError } = await query;
     if (saveError) throw new Error(`Failed to save product: ${saveError.message || saveError}`);
 
+    // Keep the generated database ID in editor state. Otherwise the next save/publish
+    // would treat this new card as unsaved and insert a duplicate row.
+    if (isNew) {
+      setProductRows((prev) =>
+        prev.map((row) => (row === item ? { ...row, id: productId } : row))
+      );
+    }
+
     if (reload) await loadData();
   };
 
@@ -604,6 +611,13 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
 
     const { error: saveError } = await query;
     if (saveError) throw new Error(`Failed to save gallery item: ${saveError.message || saveError}`);
+
+    // Retain the generated ID so later saves update this item instead of duplicating it.
+    if (isNew) {
+      setGalleryRows((prev) =>
+        prev.map((row) => (row === item ? { ...row, id: galleryId } : row))
+      );
+    }
 
     if (reload) await loadData();
   };
