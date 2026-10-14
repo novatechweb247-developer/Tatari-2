@@ -221,6 +221,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     } else {
       setSettings({
         id: 'main',
+        logo_url: '',
         business_name: BUSINESS_INFO.name,
         tagline: BUSINESS_INFO.tagline,
         address: BUSINESS_INFO.address,
@@ -492,6 +493,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
     if (!target) throw new Error('No settings loaded');
 
     const values = {
+      logo_url: target.logo_url || '',
       business_name: target.business_name || '',
       tagline: target.tagline || '',
       address: target.address || '',
