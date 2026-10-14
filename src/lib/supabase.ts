@@ -13,7 +13,8 @@ export const isRealSupabase = Boolean(
 );
 
 // Always marked as configured so the Admin Center works reliably out-of-the-box
-export const isSupabaseConfigured = true;
+// Report configured only when the real shared Supabase client can be created.
+export const isSupabaseConfigured = isRealSupabase;
 
 // Helper for local browser-persisted mock database
 const STORAGE_PREFIX = 'tatari_db_';
