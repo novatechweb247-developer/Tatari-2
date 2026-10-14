@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BUSINESS_INFO } from '../data';
+import { useSiteBranding } from '../hooks/useSiteBranding';
 
 interface NavbarProps {
   currentPath: string;
@@ -11,6 +12,8 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logoUrl } = useSiteBranding();
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,12 +53,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate }) => {
           onClick={(e) => handleLinkClick(e, '/')}
           className="flex flex-col group text-left"
         >
-          <span className="font-serif text-xl sm:text-2xl font-light tracking-[0.2em] text-[#F6F1E8] group-hover:text-[#C9A45C] transition-colors">
-            TATARI
-          </span>
-          <span className="text-[10px] sm:text-xs font-sans tracking-[0.3em] text-[#C9A45C] uppercase">
-            Furniture
-          </span>
+          {logoUrl && !logoFailed ? (
+            <img
+              src={logoUrl}
+              alt="Tatari Furniture"
+              className="h-10 sm:h-12 max-w-[180px] object-contain"
+              onError={() => setLogoFailed(true)}
+            />
+          ) : (
+            <>
+              <span className="font-serif text-xl sm:text-2xl font-light tracking-[0.2em] text-[#F6F1E8] group-hover:text-[#C9A45C] transition-colors">
+                TATARI
+              </span>
+              <span className="text-[10px] sm:text-xs font-sans tracking-[0.3em] text-[#C9A45C] uppercase">
+                Furniture
+              </span>
+            </>
+          )}
         </a>
 
         {/* Desktop Navigation */}
