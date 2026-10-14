@@ -134,7 +134,7 @@ export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [active, setActive] = useState<Section>('Overview');
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState('admin@tatari.com');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
