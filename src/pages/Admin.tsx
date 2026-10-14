@@ -23,8 +23,8 @@ const labelClass = 'mb-2 block text-xs font-semibold uppercase tracking-wider te
 export const Admin: React.FC<{ onExit: () => void }> = ({ onExit }) => {
   const [active, setActive] = useState<Section>('Overview');
   const [session, setSession] = useState<any>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@tatari.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');

@@ -125,7 +125,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         </div>
 
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between text-xs text-[#D8CEC0]/60 font-light">
-          <p>© {new Date().getFullYear()} Tatari Furniture. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Tatari Furniture. All rights reserved. · <a href="/admin" onClick={(e) => handleLinkClick(e, '/admin')} className="hover:text-[#C9A45C] transition-colors">Admin Center</a></p>
           <p className="mt-4 md:mt-0">179 Dogon Karfi, Jos, Plateau State, Nigeria</p>
         </div>
       </div>
