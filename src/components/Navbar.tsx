@@ -47,29 +47,36 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, onNavigate }) => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Brand Logo */}
+        {/* Brand: circular cropped logo + always-visible business name */}
         <a
           href="/"
           onClick={(e) => handleLinkClick(e, '/')}
-          className="flex flex-col group text-left"
+          aria-label="Tatari Furniture home"
+          className="flex min-w-0 items-center gap-2.5 sm:gap-3 group text-left"
         >
           {logoUrl && !logoFailed ? (
-            <img
-              src={logoUrl}
-              alt="Tatari Furniture"
-              className="h-10 sm:h-12 max-w-[180px] object-contain"
-              onError={() => setLogoFailed(true)}
-            />
+            <span className="relative flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#C9A45C]/70 bg-[#3A271C] shadow-md ring-2 ring-[#C9A45C]/10">
+              <img
+                src={logoUrl}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full rounded-full object-cover object-center scale-110"
+                onError={() => setLogoFailed(true)}
+              />
+            </span>
           ) : (
-            <>
-              <span className="font-serif text-xl sm:text-2xl font-light tracking-[0.2em] text-[#F6F1E8] group-hover:text-[#C9A45C] transition-colors">
-                TATARI
-              </span>
-              <span className="text-[10px] sm:text-xs font-sans tracking-[0.3em] text-[#C9A45C] uppercase">
-                Furniture
-              </span>
-            </>
+            <span className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full border border-[#C9A45C]/70 bg-[#3A271C] font-serif text-lg sm:text-xl text-[#C9A45C] shadow-md">
+              T
+            </span>
           )}
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="font-serif text-sm sm:text-base font-semibold tracking-[0.12em] text-[#F6F1E8] group-hover:text-[#C9A45C] transition-colors whitespace-nowrap">
+              TATARI
+            </span>
+            <span className="mt-1 text-[9px] sm:text-[10px] font-sans font-medium tracking-[0.2em] text-[#C9A45C] uppercase whitespace-nowrap">
+              Furniture
+            </span>
+          </span>
         </a>
 
         {/* Desktop Navigation */}
