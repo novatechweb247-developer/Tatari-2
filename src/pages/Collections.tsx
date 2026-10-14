@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { PRODUCTS } from '../data';
 import { Product } from '../types';
-import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface CollectionsProps {
@@ -22,8 +21,18 @@ export const Collections: React.FC<CollectionsProps> = ({ onNavigate }) => {
         setProducts(data.map(row => ({ id: row.id, name: row.name, category: row.category as Product['category'], categoryLabel: row.category_label, image: row.image_url, description: row.description, features: Array.isArray(row.features) ? row.features as string[] : [], dimensions: row.dimensions || undefined, materials: row.materials || undefined })));
       }
     };
-    void loadProducts();
-    return () => { cancelled = true; };
+    const refreshProducts = () => { void loadProducts(); };
+    refreshProducts();
+    const refreshTimer = window.setInterval(refreshProducts, 15000);
+    window.addEventListener('focus', refreshProducts);
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshProducts(); };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshProducts);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   const categories = [
