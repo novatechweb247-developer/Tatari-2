@@ -47,6 +47,11 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Every route change starts at the top, including browser Back/Forward navigation.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [currentPath]);
+
   const handleNavigate = (path: string) => {
     const canonicalPath = getCanonicalPath(path);
     window.history.pushState({}, '', canonicalPath);
@@ -57,6 +62,7 @@ export default function App() {
     window.history.pushState({}, '', '/');
     setCurrentPath('/');
     setLoadingComplete(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   };
 
   if (currentPath === '/admin') {
