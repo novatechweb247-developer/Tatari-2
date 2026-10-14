@@ -12,11 +12,12 @@ export const isRealSupabase = Boolean(
   rawKey.trim().length > 10
 );
 
-// Always marked as configured so the Admin Center works out-of-the-box
+// Always marked as configured so the Admin Center works reliably out-of-the-box
 export const isSupabaseConfigured = true;
 
 // Helper for local browser-persisted mock database
 const STORAGE_PREFIX = 'tatari_db_';
+const inMemoryMedia = new Map<string, string>();
 
 function getStored<T>(key: string, defaultFactory: () => T): T {
   if (typeof window === 'undefined') return defaultFactory();
@@ -38,7 +39,7 @@ function setStored<T>(key: string, value: T): void {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
   } catch (err) {
-    console.warn('[Tatari Local Store] write error', err);
+    console.warn('[Tatari Local Store] write error (falling back to memory)', err);
   }
 }
 
@@ -156,6 +157,7 @@ class MockQueryBuilder implements PromiseLike<any> {
   private isSingle = false;
   private isMaybeSingle = false;
   private pendingUpdate?: any;
+  private pendingUpsert?: { values: any; onConflict?: string };
   private pendingInsert?: any;
   private isDelete = false;
 
@@ -200,6 +202,11 @@ class MockQueryBuilder implements PromiseLike<any> {
     return this;
   }
 
+  upsert(values: any, options?: { onConflict?: string }) {
+    this.pendingUpsert = { values, onConflict: options?.onConflict };
+    return this;
+  }
+
   insert(values: any) {
     this.pendingInsert = values;
     return this;
@@ -212,6 +219,31 @@ class MockQueryBuilder implements PromiseLike<any> {
 
   private execute() {
     const tableData = [...getTableData(this.table)];
+
+    // Handle UPSERT
+    if (this.pendingUpsert !== undefined) {
+      const { values, onConflict } = this.pendingUpsert;
+      const items = Array.isArray(values) ? values : [values];
+      const conflictKey = onConflict || (this.table === 'hero_slides' ? 'slide_number' : 'id');
+
+      const nextData = [...tableData];
+      for (const item of items) {
+        const idx = nextData.findIndex(
+          (r) => String(r[conflictKey]) === String(item[conflictKey])
+        );
+        if (idx >= 0) {
+          nextData[idx] = { ...nextData[idx], ...item };
+        } else {
+          nextData.push({
+            id: item.id || `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            created_at: item.created_at || new Date().toISOString(),
+            ...item,
+          });
+        }
+      }
+      setTableData(this.table, nextData);
+      return { data: Array.isArray(values) ? values : values, error: null };
+    }
 
     // Handle INSERT
     if (this.pendingInsert !== undefined) {
@@ -230,7 +262,7 @@ class MockQueryBuilder implements PromiseLike<any> {
     if (this.pendingUpdate !== undefined) {
       let updatedCount = 0;
       const nextData = tableData.map((row) => {
-        const matches = this.conditions.every((c) => String(row[c.col]) === String(c.val));
+        const matches = this.conditions.length > 0 && this.conditions.every((c) => String(row[c.col]) === String(c.val));
         if (matches) {
           updatedCount++;
           return { ...row, ...this.pendingUpdate };
@@ -315,15 +347,21 @@ const mockStorage = {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        setStored(`media_${bucket}_${path}`, dataUrl);
+        inMemoryMedia.set(`${bucket}_${path}`, dataUrl);
+        try {
+          setStored(`media_${bucket}_${path}`, dataUrl);
+        } catch (e) {
+          console.warn('[Storage quota exceeded, keeping in memory]', e);
+        }
         return { data: { path }, error: null };
       } catch (err: any) {
         return { data: null, error: err };
       }
     },
     getPublicUrl: (path: string) => {
+      const mem = inMemoryMedia.get(`${bucket}_${path}`);
       const stored = getStored<string | null>(`media_${bucket}_${path}`, () => null);
-      return { data: { publicUrl: stored || path } };
+      return { data: { publicUrl: mem || stored || path } };
     },
   }),
 };

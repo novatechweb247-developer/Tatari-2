@@ -23,7 +23,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [heroSlides, setHeroSlides] = useState<HomeHeroSlide[]>(HERO_SLIDES);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>(PRODUCTS.slice(0, 4));
-  const [editorialImage, setEditorialImage] = useState('');
+  const [editorialImage, setEditorialImage] = useState(
+    'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1000&q=85'
+  );
   const [businessAddress, setBusinessAddress] = useState(BUSINESS_INFO.address);
   const [whatsappUrl, setWhatsappUrl] = useState(BUSINESS_INFO.whatsappUrl);
 
@@ -32,8 +34,25 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     const loadPublishedHero = async () => {
       if (!supabase) return;
       const { data, error } = await supabase.from('hero_slides').select('slide_number,title,subtitle,badge,image_url,button_text,button_url,is_published').eq('is_published', true).order('slide_number');
-      if (!cancelled && !error && data?.length === 3 && data.every(row => row.title && row.image_url)) {
-        setHeroSlides(data.map(row => ({ id: row.slide_number, title: row.title, subtitle: row.subtitle, badge: row.badge, image: row.image_url, button_text: row.button_text, button_url: row.button_url })));
+      if (!cancelled && !error && data && data.length > 0) {
+        setHeroSlides(prev => {
+          const publishedMap = new Map((data as any[]).map((row: any) => [row.slide_number, row]));
+          return prev.map((defaultSlide, idx) => {
+            const row = publishedMap.get(idx + 1);
+            if (row && row.title && row.image_url) {
+              return {
+                id: row.slide_number,
+                title: row.title,
+                subtitle: row.subtitle || defaultSlide.subtitle,
+                badge: row.badge || defaultSlide.badge,
+                image: row.image_url,
+                button_text: row.button_text || defaultSlide.button_text,
+                button_url: row.button_url || defaultSlide.button_url,
+              };
+            }
+            return defaultSlide;
+          });
+        });
       }
     };
     void loadPublishedHero();
